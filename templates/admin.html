@@ -1,0 +1,779 @@
+{% extends "base.html" %}
+
+{% block title %}Администрирование{% endblock %}
+
+{% block content %}
+<div
+    style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+    <h1 style="margin: 0;">Панель администратора</h1>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a href="/admin/export/excel" class="btn"
+            style="padding: 10px 20px; font-size: 0.9em; background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+            <span>Экспорт в Excel</span>
+        </a>
+        <form action="/admin/import/users" method="post" enctype="multipart/form-data"
+            style="display: inline-flex; align-items: center; gap: 8px;">
+            <input type="file" name="users_file" accept=".xlsx,.xlsm"
+                style="max-width: 260px; font-size: 0.8em; color: #fff; background: #181818; border: 1px solid #444; padding: 6px 8px; border-radius: 4px;">
+            <button type="submit" class="btn btn-outline"
+                style="padding: 8px 16px; font-size: 0.8em; white-space: nowrap;">
+                Импорт из Excel
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица пользователей -->
+<div class="card">
+    <h2>Пользователи</h2>
+
+    <!-- Форма поиска и фильтров -->
+    <form method="get" action="/admin"
+        style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <input type="text" name="search" placeholder="Поиск по имени, логину или Spotify ID" value="{{ search or '' }}"
+            style="flex: 1; min-width: 220px; padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+
+        <select name="role"
+            style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+            <option value="">Все роли</option>
+            <option value="user" {% if role_filter=='user' %}selected{% endif %}>Только пользователи</option>
+            <option value="admin" {% if role_filter=='admin' %}selected{% endif %}>Только администраторы</option>
+        </select>
+
+        <select name="status"
+            style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+            <option value="">Любой статус</option>
+            <option value="active" {% if status_filter=='active' %}selected{% endif %}>Только активные</option>
+            <option value="blocked" {% if status_filter=='blocked' %}selected{% endif %}>Только заблокированные</option>
+        </select>
+
+        <button type="submit" class="btn" style="padding: 8px 18px; font-size: 0.85em;">Применить</button>
+        <a href="/admin" class="btn btn-outline" style="padding: 8px 18px; font-size: 0.85em;">Сбросить</a>
+    </form>
+
+    <div style="max-height: 500px; overflow-y: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        <a href="{{ build_url(user_sort_by='id', user_sort_order=('desc' if user_sort_by == 'id' and user_sort_order == 'asc' else 'asc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            ID
+                            {% if user_sort_by == 'id' %}
+                            <span>{{ '↑' if user_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ build_url(user_sort_by='display_name', user_sort_order=('desc' if user_sort_by == 'display_name' and user_sort_order == 'asc' else 'asc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            Имя
+                            {% if user_sort_by == 'display_name' %}
+                            <span>{{ '↑' if user_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>Spotify ID</th>
+                    <th>
+                        <a href="{{ build_url(user_sort_by='role', user_sort_order=('desc' if user_sort_by == 'role' and user_sort_order == 'asc' else 'asc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            Роль
+                            {% if user_sort_by == 'role' %}
+                            <span>{{ '↑' if user_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ build_url(user_sort_by='is_blocked', user_sort_order=('desc' if user_sort_by == 'is_blocked' and user_sort_order == 'asc' else 'asc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            Статус
+                            {% if user_sort_by == 'is_blocked' %}
+                            <span>{{ '↑' if user_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="user-row" data-user-id="{{ u.id }}" style="cursor: pointer;"
+                    onclick="openUserLogsModal({{ u.id }}, '{{ u.display_name }}')">
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.display_name }}</td>
+                    <td>{{ u.spotify_id or '-' }}</td>
+                    <td>
+                        {% if u.role == 'admin' %}
+                        <span style="color: var(--spotify-green); font-weight: bold;">ADMIN</span>
+                        {% else %}
+                        USER
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_blocked %}
+                        <span style="color: #e91429; font-weight: bold;">ЗАБЛОКИРОВАН</span>
+                        {% else %}
+                        <span style="color: #b3b3b3;">Активен</span>
+                        {% endif %}
+                    </td>
+                    <td onclick="event.stopPropagation();">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            {% if u.role != 'admin' %}
+                            <a href="/admin/block/{{ u.id }}" class="btn"
+                                style="padding: 5px 15px; font-size: 0.8em; {% if u.is_blocked %}background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);{% else %}background: linear-gradient(135deg, #e91429 0%, #ff1e3c 100%);{% endif %}">
+                                {{ 'Разблокировать' if u.is_blocked else 'Заблокировать' }}
+                            </a>
+                            <a href="/admin/toggle-admin/{{ u.id }}" class="btn"
+                                style="padding: 5px 15px; font-size: 0.8em; background-color: #1DB954;">
+                                Назначить администратором
+                            </a>
+                            {% else %}
+                            {% if u.id != session.get('user_db_id') %}
+                            <a href="/admin/toggle-admin/{{ u.id }}" class="btn btn-outline"
+                                style="padding: 5px 15px; font-size: 0.8em;">
+                                Снять права администратора
+                            </a>
+                            {% else %}
+                            <small style="color: #555;">Вы</small>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Таблица логов -->
+<div class="card">
+    <h2>Логи аудита</h2>
+    <div style="max-height: 400px; overflow-y: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        <a href="{{ build_url(log_sort_by='timestamp', log_sort_order=('asc' if log_sort_by == 'timestamp' and log_sort_order == 'desc' else 'desc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            Время
+                            {% if log_sort_by == 'timestamp' %}
+                            <span>{{ '↑' if log_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ build_url(log_sort_by='display_name', log_sort_order=('asc' if log_sort_by == 'display_name' and log_sort_order == 'desc' else 'desc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            Пользователь
+                            {% if log_sort_by == 'display_name' %}
+                            <span>{{ '↑' if log_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ build_url(log_sort_by='action', log_sort_order=('asc' if log_sort_by == 'action' and log_sort_order == 'desc' else 'desc')) }}"
+                            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                            Действие
+                            {% if log_sort_by == 'action' %}
+                            <span>{{ '↑' if log_sort_order == 'asc' else '↓' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>Детали</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.timestamp }}</td>
+                    <!-- Обращаемся по ключам словаря, так как используется RealDictCursor -->
+                    <td>{{ log.display_name }} <span style="color:#555; font-size:0.8em;">(ID: {{ log.user_id }})</span>
+                    </td>
+                    <td>{{ log.action }}</td>
+                    <td style="color: #b3b3b3;">{{ log.details }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Модальное окно для логов и сессий пользователя -->
+<div id="userLogsModal"
+    style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">
+    <div
+        style="background-color: #282828; margin: 5% auto; padding: 20px; border-radius: 8px; width: 90%; max-width: 1000px; max-height: 85vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="modalUserName" style="margin: 0;">Информация о пользователе</h2>
+            <button onclick="closeUserLogsModal()"
+                style="background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+        </div>
+
+        <!-- Вкладки -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #444;">
+            <button id="tabLogs" onclick="switchTab('logs')"
+                style="padding: 10px 20px; background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); border: none; color: white; cursor: pointer; border-radius: 4px 4px 0 0; font-weight: bold;">
+                Логи
+            </button>
+            <button id="tabSessions" onclick="switchTab('sessions')"
+                style="padding: 10px 20px; background: transparent; border: none; color: #B3B3B3; cursor: pointer; border-radius: 4px 4px 0 0;">
+                Сессии
+            </button>
+        </div>
+
+        <!-- Контент для логов -->
+        <div id="logsTab" style="display: block;">
+            <!-- Фильтры сортировки для логов -->
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label style="color: #B3B3B3;">Сортировать по:</label>
+                <select id="modalSortBy" onchange="loadUserLogs()"
+                    style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+                    <option value="timestamp">Время</option>
+                    <option value="action">Действие</option>
+                    <option value="display_name">Пользователь</option>
+                </select>
+                <select id="modalSortOrder" onchange="loadUserLogs()"
+                    style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+                    <option value="desc">По убыванию</option>
+                    <option value="asc">По возрастанию</option>
+                </select>
+            </div>
+
+            <div id="modalLogsContent" style="max-height: 500px; overflow-y: auto;">
+                <p style="color: #B3B3B3; text-align: center;">Загрузка...</p>
+            </div>
+        </div>
+
+        <!-- Контент для сессий -->
+        <div id="sessionsTab" style="display: none;">
+            <!-- Фильтры сортировки для сессий -->
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label style="color: #B3B3B3;">Сортировать по:</label>
+                <select id="modalSessionSortBy" onchange="loadUserSessions()"
+                    style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+                    <option value="created_at">Дата создания</option>
+                    <option value="expires_at">Дата истечения</option>
+                    <option value="ip_address">IP адрес</option>
+                </select>
+                <select id="modalSessionSortOrder" onchange="loadUserSessions()"
+                    style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+                    <option value="desc">По убыванию</option>
+                    <option value="asc">По возрастанию</option>
+                </select>
+            </div>
+
+            <div id="modalSessionsContent" style="max-height: 500px; overflow-y: auto;">
+                <p style="color: #B3B3B3; text-align: center;">Загрузка...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .user-row:hover {
+        background-color: #333 !important;
+    }
+
+    table th a:hover {
+        color: var(--spotify-green) !important;
+    }
+
+    /* Скрываем все ссылки навигации кроме "Выйти" на странице админа */
+    nav .nav-links a:not([href="/logout"]) {
+        display: none !important;
+    }
+</style>
+
+<script>
+    let currentUserId = null;
+    let currentTab = 'logs';
+
+    function openUserLogsModal(userId, userName) {
+        currentUserId = userId;
+        currentTab = 'logs';
+        document.getElementById('modalUserName').textContent = `Информация о пользователе: ${userName}`;
+        document.getElementById('userLogsModal').style.display = 'block';
+        switchTab('logs');
+        loadUserLogs();
+        loadUserSessions();
+    }
+
+    function closeUserLogsModal() {
+        document.getElementById('userLogsModal').style.display = 'none';
+        currentUserId = null;
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+
+        // Обновляем кнопки вкладок
+        const tabLogs = document.getElementById('tabLogs');
+        const tabSessions = document.getElementById('tabSessions');
+
+        if (tab === 'logs') {
+            tabLogs.style.background = 'linear-gradient(135deg, #1DB954 0%, #1ed760 100%)';
+            tabLogs.style.color = 'white';
+            tabLogs.style.fontWeight = 'bold';
+            tabSessions.style.background = 'transparent';
+            tabSessions.style.color = '#B3B3B3';
+            tabSessions.style.fontWeight = 'normal';
+
+            document.getElementById('logsTab').style.display = 'block';
+            document.getElementById('sessionsTab').style.display = 'none';
+        } else {
+            tabSessions.style.background = 'linear-gradient(135deg, #1DB954 0%, #1ed760 100%)';
+            tabSessions.style.color = 'white';
+            tabSessions.style.fontWeight = 'bold';
+            tabLogs.style.background = 'transparent';
+            tabLogs.style.color = '#B3B3B3';
+            tabLogs.style.fontWeight = 'normal';
+
+            document.getElementById('logsTab').style.display = 'none';
+            document.getElementById('sessionsTab').style.display = 'block';
+        }
+    }
+
+    function loadUserLogs() {
+        if (!currentUserId) return;
+
+        const sortBy = document.getElementById('modalSortBy').value;
+        const sortOrder = document.getElementById('modalSortOrder').value;
+        const contentDiv = document.getElementById('modalLogsContent');
+
+        contentDiv.innerHTML = '<p style="color: #B3B3B3; text-align: center;">Загрузка...</p>';
+
+        fetch(`/admin/api/user-logs/${currentUserId}?sort_by=${sortBy}&sort_order=${sortOrder}&limit=200`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.logs && data.logs.length > 0) {
+                    let html = '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr><th style="padding: 10px; border-bottom: 1px solid #444;">Время</th>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">Действие</th>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">Детали</th></tr></thead>';
+                    html += '<tbody>';
+
+                    data.logs.forEach(log => {
+                        html += '<tr style="border-bottom: 1px solid #333;">';
+                        html += `<td style="padding: 10px;">${log.timestamp || '-'}</td>`;
+                        html += `<td style="padding: 10px;">${log.action || '-'}</td>`;
+                        html += `<td style="padding: 10px; color: #b3b3b3;">${log.details || '-'}</td>`;
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                    contentDiv.innerHTML = html;
+                } else {
+                    contentDiv.innerHTML = '<p style="color: #B3B3B3; text-align: center;">Логов не найдено</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading logs:', error);
+                contentDiv.innerHTML = '<p style="color: #e91429; text-align: center;">Ошибка загрузки логов</p>';
+            });
+    }
+
+    function loadUserSessions() {
+        if (!currentUserId) return;
+
+        const sortBy = document.getElementById('modalSessionSortBy').value;
+        const sortOrder = document.getElementById('modalSessionSortOrder').value;
+        const contentDiv = document.getElementById('modalSessionsContent');
+
+        contentDiv.innerHTML = '<p style="color: #B3B3B3; text-align: center;">Загрузка...</p>';
+
+        fetch(`/admin/api/user-sessions/${currentUserId}?sort_by=${sortBy}&sort_order=${sortOrder}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.sessions && data.sessions.length > 0) {
+                    let html = '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">IP адрес</th>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">User Agent</th>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">Создана</th>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">Истекла</th>';
+                    html += '<th style="padding: 10px; border-bottom: 1px solid #444;">Статус</th>';
+                    html += '</tr></thead>';
+                    html += '<tbody>';
+
+                    data.sessions.forEach(session => {
+                        const isActive = session.is_active;
+                        const now = new Date();
+                        const expiresAt = new Date(session.expires_at);
+                        const isExpired = expiresAt < now;
+
+                        html += '<tr style="border-bottom: 1px solid #333;">';
+                        html += `<td style="padding: 10px;">${session.ip_address || '-'}</td>`;
+                        html += `<td style="padding: 10px; color: #b3b3b3; font-size: 0.9em; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${session.user_agent || '-'}">${session.user_agent || '-'}</td>`;
+                        html += `<td style="padding: 10px;">${session.created_at || '-'}</td>`;
+                        html += `<td style="padding: 10px;">${session.expires_at || '-'}</td>`;
+
+                        let statusText = '';
+                        let statusColor = '';
+                        if (isExpired) {
+                            statusText = 'Истекла';
+                            statusColor = '#e91429';
+                        } else if (isActive) {
+                            statusText = 'Активна';
+                            statusColor = '#1DB954';
+                        } else {
+                            statusText = 'Неактивна';
+                            statusColor = '#b3b3b3';
+                        }
+
+                        html += `<td style="padding: 10px;"><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>`;
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                    contentDiv.innerHTML = html;
+                } else {
+                    contentDiv.innerHTML = '<p style="color: #B3B3B3; text-align: center;">Сессий не найдено</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading sessions:', error);
+                contentDiv.innerHTML = '<p style="color: #e91429; text-align: center;">Ошибка загрузки сессий</p>';
+            });
+    }
+
+    // Закрытие модального окна при клике вне его
+    window.onclick = function (event) {
+        const modal = document.getElementById('userLogsModal');
+        if (event.target == modal) {
+            closeUserLogsModal();
+        }
+        const feedbackModal = document.getElementById('feedbackModal');
+        if (event.target == feedbackModal) {
+            closeFeedbackModal();
+        }
+    }
+</script>
+
+<!-- Таблица обратной связи -->
+<div class="card" style="margin-top: 30px;">
+    <h2>Обратная связь
+        {% if new_feedback_count > 0 %}
+        <span
+            style="background: #e91429; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.7em; margin-left: 10px;">
+            Новых: {{ new_feedback_count }}
+        </span>
+        {% endif %}
+    </h2>
+
+    <!-- Фильтры для feedback -->
+    <form method="get" action="/admin"
+        style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <input type="hidden" name="search" value="{{ search or '' }}">
+        <input type="hidden" name="role" value="{{ role_filter or '' }}">
+        <input type="hidden" name="status" value="{{ status_filter or '' }}">
+
+        <select name="feedback_status"
+            style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+            <option value="">Все статусы</option>
+            <option value="new" {% if feedback_status=='new' %}selected{% endif %}>Новые</option>
+            <option value="reviewed" {% if feedback_status=='reviewed' %}selected{% endif %}>Рассмотренные</option>
+            <option value="in_progress" {% if feedback_status=='in_progress' %}selected{% endif %}>В работе</option>
+            <option value="resolved" {% if feedback_status=='resolved' %}selected{% endif %}>Решено</option>
+            <option value="rejected" {% if feedback_status=='rejected' %}selected{% endif %}>Отклонено</option>
+        </select>
+
+        <select name="feedback_type"
+            style="padding: 8px 10px; border-radius: 4px; border: 1px solid #444; background:#181818; color:#fff;">
+            <option value="">Все типы</option>
+            <option value="bug" {% if feedback_type_filter=='bug' %}selected{% endif %}>Ошибка</option>
+            <option value="feature_request" {% if feedback_type_filter=='feature_request' %}selected{% endif %}>Запрос
+                функции</option>
+            <option value="complaint" {% if feedback_type_filter=='complaint' %}selected{% endif %}>Жалоба</option>
+            <option value="praise" {% if feedback_type_filter=='praise' %}selected{% endif %}>Благодарность</option>
+            <option value="other" {% if feedback_type_filter=='other' %}selected{% endif %}>Другое</option>
+        </select>
+
+        <button type="submit" class="btn" style="padding: 8px 18px; font-size: 0.85em;">Применить</button>
+    </form>
+
+    <div style="max-height: 500px; overflow-y: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Тип</th>
+                    <th>Заголовок</th>
+                    <th>Пользователь</th>
+                    <th>Статус</th>
+                    <th>Приоритет</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fb in all_feedback %}
+                <tr>
+                    <td>{{ fb.id }}</td>
+                    <td>
+                        {% if fb.feedback_type == 'bug' %}
+                        {% elif fb.feedback_type == 'feature_request' %}
+                        {% elif fb.feedback_type == 'complaint' %}
+                        {% elif fb.feedback_type == 'praise' %}
+                        {% else %}
+                        {% endif %}
+                        {{ fb.feedback_type }}
+                    </td>
+                    <td>
+                        <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                            title="{{ fb.title }}">
+                            {{ fb.title }}
+                        </div>
+                    </td>
+                    <td>{{ fb.display_name or fb.username or 'Аноним' }}</td>
+                    <td>
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.85em;
+                            {% if fb.status == 'new' %}background: #1DB954; color: white;
+                            {% elif fb.status == 'in_progress' %}background: #FFCE56; color: #333;
+                            {% elif fb.status == 'resolved' %}background: #36A2EB; color: white;
+                            {% elif fb.status == 'rejected' %}background: #e91429; color: white;
+                            {% else %}background: #666; color: white;
+                            {% endif %}">
+                            {{ fb.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if fb.priority %}
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.85em;
+                            {% if fb.priority == 'critical' %}background: #e91429; color: white;
+                            {% elif fb.priority == 'high' %}background: #FF6384; color: white;
+                            {% elif fb.priority == 'medium' %}background: #FFCE56; color: #333;
+                            {% else %}background: #36A2EB; color: white;
+                            {% endif %}">
+                            {{ fb.priority }}
+                        </span>
+                        {% else %}
+                        <span style="color: #666;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ fb.created_at.strftime('%d.%m.%Y %H:%M') if fb.created_at else '' }}</td>
+                    <td>
+                        <button onclick="openFeedbackModal({{ fb.id }})" class="btn"
+                            style="padding: 6px 12px; font-size: 0.8em; background: #1DB954;">
+                            Просмотр
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #666; padding: 20px;">
+                        Обратная связь не найдена
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра feedback -->
+<div id="feedbackModal"
+    style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); overflow-y: auto;">
+    <div
+        style="background-color: #282828; margin: 5% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 700px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="modalFeedbackTitle" style="margin: 0; color: #fff;">Обратная связь</h2>
+            <button onclick="closeFeedbackModal()"
+                style="background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; padding: 0; width: 40px; height: 40px; line-height: 1;">&times;</button>
+        </div>
+        <div id="modalFeedbackContent" style="color: #B3B3B3;">
+            <p>Загрузка...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openFeedbackModal(feedbackId) {
+        document.getElementById('feedbackModal').style.display = 'block';
+        document.getElementById('modalFeedbackContent').innerHTML = '<p style="text-align: center; color: #B3B3B3;">Загрузка...</p>';
+
+        fetch(`/admin/api/feedback/${feedbackId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('modalFeedbackContent').innerHTML =
+                        `<p style="color: #e91429; text-align: center;">Ошибка: ${data.error}</p>`;
+                } else {
+                    displayFeedbackInfo(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading feedback:', error);
+                document.getElementById('modalFeedbackContent').innerHTML =
+                    '<p style="color: #e91429; text-align: center;">Ошибка загрузки данных</p>';
+            });
+    }
+
+    function displayFeedbackInfo(data) {
+        const content = document.getElementById('modalFeedbackContent');
+
+        let html = `
+            <div style="margin-bottom: 20px;">
+                <p><strong style="color: #fff;">Тип:</strong> ${data.feedback_type}</p>
+                <p><strong style="color: #fff;">Пользователь:</strong> ${data.display_name || data.username || 'Аноним'}</p>
+                <p><strong style="color: #fff;">Email:</strong> ${data.email || 'Не указан'}</p>
+                <p><strong style="color: #fff;">Дата:</strong> ${new Date(data.created_at).toLocaleString('ru-RU')}</p>
+                ${data.page_url ? `<p><strong style="color: #fff;">Страница:</strong> <a href="${data.page_url}" target="_blank" style="color: #1DB954;">${data.page_url}</a></p>` : ''}
+            </div>
+            
+            <div style="border-top: 1px solid #444; padding-top: 20px; margin-top: 20px;">
+                <h3 style="color: #fff; margin-bottom: 10px;">${data.title}</h3>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${data.message}</p>
+            </div>
+        `;
+
+        if (data.admin_notes) {
+            html += `
+                <div style="border-top: 1px solid #444; padding-top: 20px; margin-top: 20px;">
+                    <h3 style="color: #fff; margin-bottom: 10px;">Заметки администратора</h3>
+                    <p style="white-space: pre-wrap; line-height: 1.6; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;">${data.admin_notes}</p>
+                </div>
+            `;
+        }
+
+        // Шаблоны сообщений для разных типов feedback
+        const messageTemplates = {
+            'bug': `Мы работаем над исправлением этой проблемы. Как только она будет решена, мы обязательно сообщим вам об этом.
+
+Если у вас есть дополнительная информация, которая может помочь в решении проблемы, пожалуйста, ответьте на это письмо.`,
+            'feature_request': `Ваше предложение было рассмотрено нашей командой. Мы оцениваем его и учитываем при планировании новых функций.
+
+Если ваша идея будет реализована, мы обязательно сообщим вам об этом в будущих обновлениях.`,
+            'complaint': `Мы серьезно относимся к каждой жалобе и обязательно разберемся в ситуации. Наша команда работает над решением проблемы.
+
+Мы приносим извинения за доставленные неудобства и надеемся на ваше понимание.`,
+            'praise': `Ваши слова очень важны для нас и мотивируют нас продолжать улучшать сервис.
+
+Мы рады, что вам нравится использовать Spotify Analytics, и будем продолжать работать над новыми функциями и улучшениями.`,
+            'other': `Мы получили ваше сообщение и обязательно рассмотрим его. Если потребуется дополнительная информация, мы свяжемся с вами.`
+        };
+
+        const defaultMessage = messageTemplates[data.feedback_type] || messageTemplates['other'];
+
+        html += `
+            ${data.email ? `
+            <div style="border-top: 1px solid #444; padding-top: 20px; margin-top: 20px;">
+                <h3 style="color: #fff; margin-bottom: 15px;">Отправить ответ пользователю</h3>
+                <form id="sendEmailForm" onsubmit="sendFeedbackEmail(event, ${data.id})">
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <label style="display: block; color: #ccc; margin-bottom: 5px;">Сообщение пользователю</label>
+                            <textarea id="customMessage" name="custom_message" rows="6" style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white; resize: vertical; font-family: inherit;">${defaultMessage}</textarea>
+                            <p style="color: #666; font-size: 0.85em; margin-top: 5px;">Вы можете отредактировать сообщение перед отправкой</p>
+                        </div>
+                        <button type="submit" class="btn" style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); padding: 10px 20px;">
+                            Отправить ответ на ${data.email}
+                        </button>
+                    </div>
+                </form>
+            </div>
+            ` : `
+            <div style="border-top: 1px solid #444; padding-top: 20px; margin-top: 20px;">
+                <p style="color: #666; text-align: center;">Нельзя отправить ответ: у пользователя не указан email</p>
+            </div>
+            `}
+            
+            <div style="border-top: 1px solid #444; padding-top: 20px; margin-top: 20px;">
+                <h3 style="color: #fff; margin-bottom: 15px;">Изменить статус</h3>
+                <form id="updateFeedbackForm" onsubmit="updateFeedbackStatus(event, ${data.id})">
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <label style="display: block; color: #ccc; margin-bottom: 5px;">Статус</label>
+                            <select name="status" required style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white;">
+                                <option value="new" ${data.status == 'new' ? 'selected' : ''}>Новый</option>
+                                <option value="reviewed" ${data.status == 'reviewed' ? 'selected' : ''}>Рассмотрен</option>
+                                <option value="in_progress" ${data.status == 'in_progress' ? 'selected' : ''}>В работе</option>
+                                <option value="resolved" ${data.status == 'resolved' ? 'selected' : ''}>Решено</option>
+                                <option value="rejected" ${data.status == 'rejected' ? 'selected' : ''}>Отклонено</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; color: #ccc; margin-bottom: 5px;">Приоритет</label>
+                            <select name="priority" style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white;">
+                                <option value="">Не указан</option>
+                                <option value="low" ${data.priority == 'low' ? 'selected' : ''}>Низкий</option>
+                                <option value="medium" ${data.priority == 'medium' ? 'selected' : ''}>Средний</option>
+                                <option value="high" ${data.priority == 'high' ? 'selected' : ''}>Высокий</option>
+                                <option value="critical" ${data.priority == 'critical' ? 'selected' : ''}>Критический</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; color: #ccc; margin-bottom: 5px;">Заметки администратора</label>
+                            <textarea name="admin_notes" rows="4" style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white; resize: vertical;">${data.admin_notes || ''}</textarea>
+                        </div>
+                        <button type="submit" class="btn" style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); padding: 10px 20px;">Сохранить изменения</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        content.innerHTML = html;
+        document.getElementById('modalFeedbackTitle').textContent = data.title;
+    }
+
+    function updateFeedbackStatus(event, feedbackId) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+
+        fetch(`/admin/feedback/update/${feedbackId}`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Статус успешно обновлен!');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.message || 'Не удалось обновить статус'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка обновления статуса');
+            });
+    }
+
+    function sendFeedbackEmail(event, feedbackId) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const btn = event.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = 'Отправка...';
+        btn.style.opacity = '0.6';
+
+        fetch(`/admin/feedback/send-email/${feedbackId}`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Сообщение успешно отправлено пользователю!');
+                } else {
+                    alert('Ошибка: ' + (data.message || 'Не удалось отправить сообщение'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка отправки сообщения');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.style.opacity = '1';
+            });
+    }
+
+    function closeFeedbackModal() {
+        document.getElementById('feedbackModal').style.display = 'none';
+    }
+</script>
+{% endblock %}

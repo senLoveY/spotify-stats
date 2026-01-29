@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin: 40px auto; padding: 0 20px;">
+    <h1 style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
+               -webkit-background-clip: text;
+               -webkit-text-fill-color: transparent;
+               background-clip: text;
+               font-size: 2.5em;
+               margin-bottom: 30px;
+               text-align: center;">Профиль</h1>
+
+    <!-- Секция информации о пользователе -->
+    <div class="card" style="margin-bottom: 30px; padding: 30px;">
+        <h2 style="color: #1DB954; margin-bottom: 20px; font-size: 1.5em;">Информация о пользователе</h2>
+        <div style="display: grid; gap: 15px;">
+            <div>
+                <label style="display: block; color: #ccc; margin-bottom: 5px; font-size: 0.9em;">Логин</label>
+                <div
+                    style="color: white; font-size: 1.1em; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                    {{ user.username }}
+                </div>
+            </div>
+            <div>
+                <label style="display: block; color: #ccc; margin-bottom: 5px; font-size: 0.9em;">Роль</label>
+                <div
+                    style="color: white; font-size: 1.1em; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                    {% if user.role == 'admin' %}
+                    <span style="color: #1DB954; font-weight: bold;">Администратор</span>
+                    {% else %}
+                    <span style="color: #ccc;">Пользователь</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if user.spotify_id %}
+            <div>
+                <label style="display: block; color: #ccc; margin-bottom: 5px; font-size: 0.9em;">Spotify ID</label>
+                <div
+                    style="color: white; font-size: 1.1em; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                    {{ user.spotify_id }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Секция изменения имени -->
+    <div class="card" style="margin-bottom: 30px; padding: 30px;">
+        <h2 style="color: #1DB954; margin-bottom: 20px; font-size: 1.5em;">Изменить имя</h2>
+        <form method="POST" action="/profile" style="display: grid; gap: 15px;">
+            <input type="hidden" name="action" value="update_display_name">
+            <div>
+                <label for="new_display_name" style="display: block; color: #ccc; margin-bottom: 5px;">Новое имя</label>
+                <input type="text" id="new_display_name" name="new_display_name" value="{{ user.display_name }}"
+                    required maxlength="100" style="width: 100%; 
+                              padding: 12px 15px; 
+                              background: rgba(255, 255, 255, 0.1); 
+                              border: 1px solid rgba(255, 255, 255, 0.2); 
+                              border-radius: 8px; 
+                              color: white; 
+                              font-size: 1em;
+                              transition: all 0.3s;">
+            </div>
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); 
+                           border: none; 
+                           color: white; 
+                           padding: 12px 30px; 
+                           border-radius: 25px; 
+                           cursor: pointer; 
+                           font-weight: 600; 
+                           transition: all 0.3s;
+                           justify-self: start;">
+                Сохранить имя
+            </button>
+        </form>
+    </div>
+
+    <!-- Секция изменения email -->
+    <div class="card" style="margin-bottom: 30px; padding: 30px;">
+        <h2 style="color: #1DB954; margin-bottom: 20px; font-size: 1.5em;">Изменить email</h2>
+        <form method="POST" action="/profile" style="display: grid; gap: 15px;">
+            <input type="hidden" name="action" value="update_email">
+            <div>
+                <label for="new_email" style="display: block; color: #ccc; margin-bottom: 5px;">Новый email</label>
+                <input type="email" id="new_email" name="new_email" value="{{ user.email or '' }}" required style="width: 100%; 
+                              padding: 12px 15px; 
+                              background: rgba(255, 255, 255, 0.1); 
+                              border: 1px solid rgba(255, 255, 255, 0.2); 
+                              border-radius: 8px; 
+                              color: white; 
+                              font-size: 1em;
+                              transition: all 0.3s;">
+            </div>
+            {% if user.email %}
+            <div style="color: #ccc; font-size: 0.9em; margin-bottom: 10px;">
+                Текущий статус:
+                {% if user.email_verified %}
+                <span style="color: #1DB954;">Подтвержден</span>
+                {% else %}
+                <span style="color: #ff6b6b;">Не подтвержден</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); 
+                           border: none; 
+                           color: white; 
+                           padding: 12px 30px; 
+                           border-radius: 25px; 
+                           cursor: pointer; 
+                           font-weight: 600; 
+                           transition: all 0.3s;
+                           justify-self: start;">
+                Сохранить email
+            </button>
+        </form>
+
+        <!-- Секция подтверждения email -->
+        {% if user.email and not user.email_verified %}
+        <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+            <h3 style="color: #1DB954; margin-bottom: 15px; font-size: 1.2em;">Подтверждение email</h3>
+            <p style="color: #ccc; margin-bottom: 20px; font-size: 0.9em;">
+                Для подтверждения email адреса необходимо ввести код, который будет отправлен на ваш email.
+            </p>
+
+            <!-- Форма для отправки кода -->
+            <form method="POST" action="/profile" style="margin-bottom: 20px;">
+                <input type="hidden" name="action" value="send_verification_code">
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                               border: none; 
+                               color: white; 
+                               padding: 12px 30px; 
+                               border-radius: 25px; 
+                               cursor: pointer; 
+                               font-weight: 600; 
+                               transition: all 0.3s;">
+                    Отправить код подтверждения
+                </button>
+            </form>
+
+            <!-- Форма для ввода кода -->
+            <form method="POST" action="/profile" style="display: grid; gap: 15px;">
+                <input type="hidden" name="action" value="verify_email_code">
+                <div>
+                    <label for="verification_code" style="display: block; color: #ccc; margin-bottom: 5px;">Код
+                        подтверждения</label>
+                    <input type="text" id="verification_code" name="verification_code"
+                        placeholder="Введите 6-значный код" required maxlength="6" pattern="[0-9]{6}" style="width: 100%; 
+                                  padding: 12px 15px; 
+                                  background: rgba(255, 255, 255, 0.1); 
+                                  border: 1px solid rgba(255, 255, 255, 0.2); 
+                                  border-radius: 8px; 
+                                  color: white; 
+                                  font-size: 1.2em;
+                                  letter-spacing: 4px;
+                                  text-align: center;
+                                  transition: all 0.3s;">
+                </div>
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); 
+                               border: none; 
+                               color: white; 
+                               padding: 12px 30px; 
+                               border-radius: 25px; 
+                               cursor: pointer; 
+                               font-weight: 600; 
+                               transition: all 0.3s;
+                               justify-self: start;">
+                    Подтвердить email
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Секция изменения пароля -->
+    {% if user.password_hash %}
+    <div class="card" style="margin-bottom: 30px; padding: 30px;">
+        <h2 style="color: #1DB954; margin-bottom: 20px; font-size: 1.5em;">Изменить пароль</h2>
+        <form method="POST" action="/profile" style="display: grid; gap: 15px;">
+            <input type="hidden" name="action" value="update_password">
+            <div>
+                <label for="current_password" style="display: block; color: #ccc; margin-bottom: 5px;">Текущий
+                    пароль</label>
+                <input type="password" id="current_password" name="current_password" required minlength="6" style="width: 100%; 
+                              padding: 12px 15px; 
+                              background: rgba(255, 255, 255, 0.1); 
+                              border: 1px solid rgba(255, 255, 255, 0.2); 
+                              border-radius: 8px; 
+                              color: white; 
+                              font-size: 1em;
+                              transition: all 0.3s;">
+            </div>
+            <div>
+                <label for="new_password" style="display: block; color: #ccc; margin-bottom: 5px;">Новый пароль</label>
+                <input type="password" id="new_password" name="new_password" required minlength="6" style="width: 100%; 
+                              padding: 12px 15px; 
+                              background: rgba(255, 255, 255, 0.1); 
+                              border: 1px solid rgba(255, 255, 255, 0.2); 
+                              border-radius: 8px; 
+                              color: white; 
+                              font-size: 1em;
+                              transition: all 0.3s;">
+            </div>
+            <div>
+                <label for="confirm_password" style="display: block; color: #ccc; margin-bottom: 5px;">Подтвердите новый
+                    пароль</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6" style="width: 100%; 
+                              padding: 12px 15px; 
+                              background: rgba(255, 255, 255, 0.1); 
+                              border: 1px solid rgba(255, 255, 255, 0.2); 
+                              border-radius: 8px; 
+                              color: white; 
+                              font-size: 1em;
+                              transition: all 0.3s;">
+            </div>
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%); 
+                           border: none; 
+                           color: white; 
+                           padding: 12px 30px; 
+                           border-radius: 25px; 
+                           cursor: pointer; 
+                           font-weight: 600; 
+                           transition: all 0.3s;
+                           justify-self: start;">
+                Изменить пароль
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+        transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+        outline: none;
+        border-color: #1DB954;
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.1);
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
+    }
+
+    .btn:active {
+        transform: translateY(0);
+    }
+
+    label[style*="cursor: pointer"]:hover {
+        background: rgba(29, 185, 84, 0.15) !important;
+        border-color: #1DB954 !important;
+    }
+</style>
+{% endblock %}

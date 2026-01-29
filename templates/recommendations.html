@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
+    <div>
+        <h1>Рекомендации для вас</h1>
+        <div id="userVibeContainer">
+            {% if user_vibe %}
+            <div
+                style="margin-top: 15px; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%); border-radius: 20px; display: inline-block; box-shadow: 0 8px 16px rgba(0,0,0,0.2); overflow: hidden; position: relative;">
+                <div style="padding: 16px 24px; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px);">
+                    <div
+                        style="font-size: 0.85em; color: rgba(255,255,255,0.9); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                        Твой музыкальный вайб
+                    </div>
+                    <div
+                        style="font-size: 1.4em; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        {{ user_vibe }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Если Spotify не привязан -->
+{% if not user.spotify_id %}
+<div class="card" style="text-align: center; border: 1px solid #1DB954;">
+    <h2>Подключите Spotify</h2>
+    <p>Чтобы получить персональные рекомендации, нужно связать аккаунт Spotify.</p>
+    <a href="/login-spotify" class="btn">Привязать Spotify Аккаунт</a>
+</div>
+{% else %}
+
+<!-- Окно с рекомендованными артистами -->
+<div class="card">
+    <h2>Исполнители, которые могут вам понравиться</h2>
+    <p style="color: #B3B3B3; margin-bottom: 20px;">
+        Рекомендации основаны на ваших любимых жанрах
+    </p>
+    <div id="recommendedArtistsContainer">
+        <div style="text-align: center; padding: 40px 20px; color: #B3B3B3;">
+            <div
+                style="display: inline-block; width: 40px; height: 40px; border: 4px solid #333; border-top-color: #1DB954; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px;">
+            </div>
+            <p>Загрузка рекомендаций...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Окно с рекомендованными треками -->
+<div class="card">
+    <h2>Треки, которые могут вам понравиться</h2>
+    <p style="color: #B3B3B3; margin-bottom: 20px;">
+        Рекомендации основаны на ваших любимых жанрах и артистах
+    </p>
+    <div id="recommendedTracksContainer">
+        <div style="text-align: center; padding: 40px 20px; color: #B3B3B3;">
+            <div
+                style="display: inline-block; width: 40px; height: 40px; border: 4px solid #333; border-top-color: #1DB954; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px;">
+            </div>
+            <p>Загрузка рекомендаций...</p>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<style>
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<!-- Модальное окно для информации о треке (используем то же, что и на dashboard) -->
+<div id="trackModal"
+    style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); overflow-y: auto;">
+    <div
+        style="background-color: #282828; margin: 5% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="modalTrackName" style="margin: 0; color: #fff;">Информация о треке</h2>
+            <button onclick="closeTrackModal()"
+                style="background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; padding: 0; width: 40px; height: 40px; line-height: 1;">&times;</button>
+        </div>
+        <div id="modalTrackContent" style="color: #B3B3B3;">
+            <p style="text-align: center;">Загрузка...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для информации об исполнителе -->
+<div id="artistModal"
+    style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); overflow-y: auto;">
+    <div
+        style="background-color: #282828; margin: 5% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="modalArtistName" style="margin: 0; color: #fff;">Информация об исполнителе</h2>
+            <button onclick="closeArtistModal()"
+                style="background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; padding: 0; width: 40px; height: 40px; line-height: 1;">&times;</button>
+        </div>
+        <div id="modalArtistContent" style="color: #B3B3B3;">
+            <p style="text-align: center;">Загрузка...</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .track-card:hover {
+        background-color: rgba(29, 185, 84, 0.2) !important;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .artist-card:hover {
+        background-color: rgba(29, 185, 84, 0.2) !important;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+<script>
+    function openTrackModal(trackId) {
+        const modal = document.getElementById('trackModal');
+        modal.style.display = 'block';
+        document.getElementById('modalTrackContent').innerHTML = '<p style="text-align: center; color: #B3B3B3;">Загрузка...</p>';
+
+        fetch(`/api/track-info/${trackId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('modalTrackContent').innerHTML =
+                        `<p style="color: #e91429; text-align: center;">Ошибка: ${data.error}</p>`;
+                } else {
+                    displayTrackInfo(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading track info:', error);
+                document.getElementById('modalTrackContent').innerHTML =
+                    '<p style="color: #e91429; text-align: center;">Ошибка загрузки данных</p>';
+            });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function displayTrackInfo(data) {
+        const textColor = '#B3B3B3';
+        const borderColor = '#444';
+
+        const content = document.getElementById('modalTrackContent');
+        let html = '';
+
+        // Заголовок с изображением
+        let imageUrl = data.image_url;
+        if (!imageUrl && data.album && data.album.images && data.album.images.length > 0) {
+            imageUrl = data.album.images[0].url;
+        }
+        if (imageUrl) {
+            html += `<div style="text-align: center; margin-bottom: 20px;">
+                        <img src="${imageUrl}" alt="${escapeHtml(data.name || 'Track')}" 
+                             style="width: 200px; height: 200px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                     </div>`;
+        }
+
+        // Основная информация
+        html += `<div style="margin-bottom: 20px;">`;
+
+        // Артисты
+        if (data.artists_full && data.artists_full.length > 0) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Артист(ы):</strong> ${data.artists_full.map(a => escapeHtml(a.name)).join(', ')}</p>`;
+        } else if (data.artists && data.artists.length > 0) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Артист(ы):</strong> ${data.artists.map(a => escapeHtml(a.name || a)).join(', ')}</p>`;
+        } else if (data.artist) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Артист:</strong> ${escapeHtml(data.artist)}</p>`;
+        }
+
+        // Альбом
+        if (data.album_name) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Альбом:</strong> ${escapeHtml(data.album_name)}</p>`;
+        } else if (data.album && data.album.name) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Альбом:</strong> ${escapeHtml(data.album.name)}</p>`;
+        }
+
+        // Дата релиза
+        if (data.album_release_date) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Дата релиза:</strong> ${escapeHtml(data.album_release_date)}</p>`;
+        } else if (data.album && data.album.release_date) {
+            html += `<p style="color: ${textColor}; margin-bottom: 5px;"><strong>Дата релиза:</strong> ${escapeHtml(data.album.release_date)}</p>`;
+        }
+
+        html += `</div>`;
+
+        // Длительность из duration_ms
+        if (data.duration_ms) {
+            const totalSeconds = Math.floor(data.duration_ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            html += `<div style="border-top: 1px solid ${borderColor}; padding-top: 20px; margin-top: 20px;">
+                        <p style="color: ${textColor};"><strong>Длительность:</strong> ${minutes}:${seconds.toString().padStart(2, '0')}</p>
+                     </div>`;
+        }
+
+        // Дополнительная информация
+        if (data.popularity !== undefined) {
+            html += `<div style="border-top: 1px solid ${borderColor}; padding-top: 20px; margin-top: 20px;">
+                        <p style="color: ${textColor};"><strong>Популярность:</strong> ${data.popularity}/100</p>`;
+        }
+
+        if (data.genre) {
+            html += `<p style="color: ${textColor};"><strong>Жанр:</strong> ${escapeHtml(data.genre)}</p>`;
+        }
+
+        // Spotify URL - всегда показываем кнопку, даже если URL нужно построить
+        let spotifyUrl = data.spotify_url;
+        if (!spotifyUrl && data.external_urls && data.external_urls.spotify) {
+            spotifyUrl = data.external_urls.spotify;
+        }
+        // Если URL нет, строим его из track_id
+        if (!spotifyUrl && data.track_id) {
+            spotifyUrl = `https://open.spotify.com/track/${data.track_id}`;
+        }
+        // Всегда показываем кнопку, если есть track_id
+        if (spotifyUrl || data.track_id) {
+            const url = spotifyUrl || `https://open.spotify.com/track/${data.track_id}`;
+            html += `<a href="${url}" target="_blank" class="btn" style="margin-top: 15px; display: inline-block;">
+                        Открыть в Spotify
+                     </a>`;
+        }
+
+        // Preview URL
+        let previewUrl = data.preview_url;
+        if (previewUrl) {
+            html += `<audio controls style="width: 100%; margin-top: 15px;">
+                        <source src="${previewUrl}" type="audio/mpeg">
+                        Ваш браузер не поддерживает аудио элемент.
+                     </audio>`;
+        }
+
+        html += `</div>`;
+
+        content.innerHTML = html;
+        document.getElementById('modalTrackName').textContent = data.name || 'Информация о треке';
+    }
+
+    function closeTrackModal() {
+        document.getElementById('trackModal').style.display = 'none';
+    }
+
+    // Закрытие модального окна при клике вне его
+    window.onclick = function (event) {
+        const trackModal = document.getElementById('trackModal');
+        const artistModal = document.getElementById('artistModal');
+        if (event.target == trackModal) {
+            closeTrackModal();
+        }
+        if (event.target == artistModal) {
+            closeArtistModal();
+        }
+    }
+
+    // Функция для загрузки данных рекомендаций
+    async function loadRecommendationsData() {
+        try {
+            const response = await fetch('/api/recommendations/data');
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки данных');
+            }
+            const data = await response.json();
+
+            // Обновляем вайб
+            updateUserVibe(data.user_vibe);
+
+            // Обновляем артистов
+            updateRecommendedArtists(data.recommended_artists || []);
+
+            // Обновляем треки
+            updateRecommendedTracks(data.recommended_tracks || []);
+        } catch (error) {
+            console.error('Ошибка загрузки рекомендаций:', error);
+            document.getElementById('recommendedArtistsContainer').innerHTML =
+                '<div style="text-align: center; padding: 40px 20px; color: #e91429;"><p>Ошибка загрузки данных</p></div>';
+            document.getElementById('recommendedTracksContainer').innerHTML =
+                '<div style="text-align: center; padding: 40px 20px; color: #e91429;"><p>Ошибка загрузки данных</p></div>';
+        }
+    }
+
+    function updateUserVibe(vibe) {
+        const container = document.getElementById('userVibeContainer');
+        if (!vibe) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = `
+            <div style="margin-top: 15px; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%); border-radius: 20px; display: inline-block; box-shadow: 0 8px 16px rgba(0,0,0,0.2); overflow: hidden; position: relative;">
+                <div style="padding: 16px 24px; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px);">
+                    <div style="font-size: 0.85em; color: rgba(255,255,255,0.9); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                        Твой музыкальный вайб
+                    </div>
+                    <div style="font-size: 1.4em; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        ${vibe}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function updateRecommendedArtists(artists) {
+        const container = document.getElementById('recommendedArtistsContainer');
+        if (!artists || artists.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px 20px; color: #B3B3B3;">
+                    <p>Пока нет рекомендаций исполнителей.</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">Прослушайте больше треков, чтобы получить персональные рекомендации артистов.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">';
+        artists.forEach(artist => {
+            const followersText = artist.followers ?
+                artist.followers.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '—';
+
+            html += `
+                <div class="artist-card" onclick="openArtistModal('${artist.artist_id}')"
+                    style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;">
+                    ${artist.image_url ?
+                    `<img src="${artist.image_url}" alt="${artist.name}" style="width: 100%; aspect-ratio: 1; border-radius: 50%; object-fit: cover; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">` :
+                    `<div style="width: 100%; aspect-ratio: 1; border-radius: 50%; background-color: #333; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"><span style="color: #666; font-size: 2em;">🎵</span></div>`
+                }
+                    <div style="font-weight: bold; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${artist.name || ''}
+                    </div>
+                    ${artist.popularity ? `<div style="color: #666; font-size: 0.75em; margin-bottom: 4px;">Популярность: ${artist.popularity}/100</div>` : ''}
+                    <div style="color: #666; font-size: 0.75em;">
+                        Подписчиков: ${followersText}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function updateRecommendedTracks(tracks) {
+        const container = document.getElementById('recommendedTracksContainer');
+        if (!tracks || tracks.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px 20px; color: #B3B3B3;">
+                    <p>Пока нет рекомендаций треков.</p>
+                    <p style="font-size: 0.9em; margin-top: 10px;">Прослушайте больше треков, чтобы получить персональные рекомендации.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">';
+        tracks.forEach(track => {
+            html += `
+                <div class="track-card" onclick="openTrackModal('${track.track_id}')"
+                    style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s;">
+                    ${track.image_url ?
+                    `<img src="${track.image_url}" alt="${track.name}" style="width: 100%; aspect-ratio: 1; border-radius: 4px; object-fit: cover; margin-bottom: 12px;">` :
+                    `<div style="width: 100%; aspect-ratio: 1; border-radius: 4px; background-color: #333; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;"></div>`
+                }
+                    <div style="font-weight: bold; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${track.name || ''}
+                    </div>
+                    <div style="color: #b3b3b3; font-size: 0.9em; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${track.artist || ''}
+                    </div>
+                    ${track.genre ? `<div style="color: #1DB954; font-size: 0.8em; margin-bottom: 4px;">${track.genre}</div>` : ''}
+                    ${track.popularity ? `<div style="color: #666; font-size: 0.75em;">Популярность: ${track.popularity}/100</div>` : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // Загружаем данные при загрузке страницы
+    {% if user.spotify_id %}
+    document.addEventListener('DOMContentLoaded', loadRecommendationsData);
+    {% endif %}
+
+    // Функции для работы с модальным окном исполнителя
+    function openArtistModal(artistId) {
+        const modal = document.getElementById('artistModal');
+        modal.style.display = 'block';
+        document.getElementById('modalArtistContent').innerHTML = '<p style="text-align: center; color: #B3B3B3;">Загрузка...</p>';
+
+        fetch(`/api/artist-info/${artistId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('modalArtistContent').innerHTML =
+                        `<p style="color: #e91429; text-align: center;">Ошибка: ${data.error}</p>`;
+                } else {
+                    displayArtistInfo(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading artist info:', error);
+                document.getElementById('modalArtistContent').innerHTML =
+                    '<p style="color: #e91429; text-align: center;">Ошибка загрузки данных</p>';
+            });
+    }
+
+    function closeArtistModal() {
+        document.getElementById('artistModal').style.display = 'none';
+    }
+
+    function displayArtistInfo(data) {
+        const textColor = '#B3B3B3';
+        const borderColor = '#444';
+
+        const content = document.getElementById('modalArtistContent');
+        let html = '';
+
+        // Заголовок с изображением
+        if (data.image_url) {
+            html += `<div style="text-align: center; margin-bottom: 20px;">
+                        <img src="${data.image_url}" alt="${escapeHtml(data.name || 'Artist')}" 
+                             style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                     </div>`;
+        }
+
+        // Основная информация
+        html += `<div style="margin-bottom: 20px;">`;
+
+        // Жанры
+        if (data.genres && Array.isArray(data.genres) && data.genres.length > 0) {
+            // Фильтруем пустые значения и непустые строки
+            const validGenres = data.genres.filter(g => g && typeof g === 'string' && g.trim().length > 0);
+            if (validGenres.length > 0) {
+                html += `<p style="color: ${textColor}; margin-bottom: 10px;">
+                            <strong>Жанры:</strong> ${validGenres.map(g => escapeHtml(g.trim())).join(', ')}
+                         </p>`;
+            }
+        }
+
+        // Популярность
+        if (data.popularity !== undefined) {
+            html += `<p style="color: ${textColor}; margin-bottom: 10px;">
+                        <strong>Популярность:</strong> ${data.popularity}/100
+                     </p>`;
+        }
+
+        // Подписчики
+        if (data.followers) {
+            const followers = typeof data.followers === 'number' ? data.followers.toLocaleString('ru-RU') : data.followers;
+            html += `<p style="color: ${textColor}; margin-bottom: 10px;">
+                        <strong>Подписчиков:</strong> ${followers}
+                     </p>`;
+        }
+
+        html += `</div>`;
+
+        // Spotify URL - всегда показываем кнопку
+        let spotifyUrl = data.spotify_url;
+        if (!spotifyUrl && data.artist_id) {
+            spotifyUrl = `https://open.spotify.com/artist/${data.artist_id}`;
+        }
+        if (spotifyUrl) {
+            html += `<div style="border-top: 1px solid #444; padding-top: 20px; margin-top: 20px; text-align: center;">
+                        <a href="${spotifyUrl}" target="_blank" class="btn" style="display: inline-block;">
+                            Открыть в Spotify
+                        </a>
+                     </div>`;
+        }
+
+        content.innerHTML = html;
+        document.getElementById('modalArtistName').textContent = data.name || 'Информация об исполнителе';
+    }
+</script>
+
+{% endblock %}

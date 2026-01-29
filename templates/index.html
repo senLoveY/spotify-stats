@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Spotify Analytics - Главная{% endblock %}
+{% block content %}
+<style>
+    .hero-section {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 100%;
+        height: 100%;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(29, 185, 84, 0.2) 0%, transparent 70%);
+        animation: pulse 20s ease-in-out infinite;
+        z-index: 0;
+    }
+
+    .hero-section::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        transform: translate(0, -50%);
+        background: radial-gradient(circle, rgba(0, 242, 254, 0.15) 0%, transparent 70%);
+        animation: pulseReverse 25s ease-in-out infinite;
+        z-index: 0;
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: translate(-50%, -50%) scale(1.15) rotate(180deg);
+            opacity: 0.8;
+        }
+    }
+
+    @keyframes pulseReverse {
+
+        0%,
+        100% {
+            transform: translate(0, -50%) scale(1) rotate(0deg);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: translate(0, -50%) scale(1.15) rotate(-180deg);
+            opacity: 0.8;
+        }
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+        max-width: 800px;
+    }
+
+    .hero-title {
+        font-size: 4em;
+        font-weight: 900;
+        margin-bottom: 20px;
+        background: linear-gradient(135deg, #1DB954 0%, #1ed760 30%, #00f2fe 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -2px;
+        line-height: 1.1;
+        animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .hero-subtitle {
+        font-size: 1.3em;
+        color: var(--text-gray);
+        margin-bottom: 50px;
+        line-height: 1.6;
+        animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .hero-buttons {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+        animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+
+    .hero-btn {
+        padding: 18px 40px;
+        border-radius: 50px;
+        font-size: 1.1em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        text-decoration: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+    }
+
+    .hero-btn-primary {
+        background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
+        color: white;
+        box-shadow: 0 4px 20px rgba(29, 185, 84, 0.4);
+    }
+
+    .hero-btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s ease, height 0.6s ease;
+    }
+
+    .hero-btn-primary:hover {
+        background: linear-gradient(135deg, #1ed760 0%, #00f2fe 100%);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(29, 185, 84, 0.6);
+    }
+
+    .hero-btn-primary:hover::before {
+        width: 400px;
+        height: 400px;
+    }
+
+    .hero-btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        backdrop-filter: blur(10px);
+    }
+
+    .hero-btn-secondary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .hero-btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-btn-secondary:hover::before {
+        left: 100%;
+    }
+
+    .features {
+        margin-top: 100px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 30px;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0 20px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .feature-card {
+        background: linear-gradient(135deg, rgba(40, 40, 40, 0.6) 0%, rgba(30, 30, 30, 0.8) 100%);
+        backdrop-filter: blur(10px);
+        padding: 30px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: center;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-8px);
+        border-color: rgba(29, 185, 84, 0.3);
+        box-shadow: 0 12px 40px rgba(29, 185, 84, 0.2);
+    }
+
+    .feature-icon {
+        font-size: 2.5em;
+        font-weight: 900;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(29, 185, 84, 0.15) 0%, rgba(30, 215, 96, 0.15) 100%);
+        border: 2px solid rgba(29, 185, 84, 0.3);
+        position: relative;
+    }
+
+    .feature-icon::after {
+        content: attr(data-icon);
+        position: absolute;
+        background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .feature-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: white;
+    }
+
+    .feature-description {
+        color: var(--text-gray);
+        line-height: 1.6;
+        font-size: 0.95em;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5em;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1em;
+        }
+
+        .hero-buttons {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .hero-btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Spotify Analytics</h1>
+        <p class="hero-subtitle">
+            Откройте для себя новые инсайты о своих музыкальных предпочтениях.
+        </p>
+
+        <div class="hero-buttons">
+            <a href="/login-spotify" class="hero-btn hero-btn-primary">
+                Войти через Spotify
+            </a>
+            <a href="/login-local" class="hero-btn hero-btn-secondary">
+                Войти / Регистрация
+            </a>
+        </div>
+    </div>
+
+    <div class="features">
+        <div class="feature-card">
+            <div class="feature-icon" data-icon="A"></div>
+            <h3 class="feature-title">Аналитика</h3>
+            <p class="feature-description">
+                Детальная статистика ваших прослушиваний с красивыми графиками и визуализациями
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon" data-icon="R"></div>
+            <h3 class="feature-title">Рекомендации</h3>
+            <p class="feature-description">
+                Персональные рекомендации треков на основе ваших музыкальных предпочтений
+            </p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon" data-icon="S"></div>
+            <h3 class="feature-title">Статистика</h3>
+            <p class="feature-description">
+                Подробная статистика прослушиваний с визуализацией и аналитикой
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
