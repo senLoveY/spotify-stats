@@ -1,0 +1,9 @@
+flask>=3.0
+psycopg2-binary>=2.9
+snowflake-connector-python>=3.0
+python-dotenv>=1.0
+requests>=2.31
+werkzeug>=3.0
+matplotlib>=3.8
+numpy>=1.26
+openpyxl>=3.1
